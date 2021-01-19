@@ -3,7 +3,7 @@
 
 const auto I_ = std::complex<double>(0.0, 1.0);
 
-const size_t n = 2;
+const size_t n = 3;
 const size_t N = 1<<n;
 
 const std::complex<double> X[2][2] = 
@@ -55,6 +55,27 @@ void vector_initializer(vector<complex<double>>& v) {
 }
 
 // Remember to remove this^^^^^^^^^^^^^^^^^^
+
+void multiply(std::complex<double> mat1[N][N], std::complex<double> mat2[N][N], std::complex<double> res[N][N])
+{
+  int i, j, k;
+  for (i = 0; i < N; i++) {
+      for (j = 0; j < N; j++) {
+          res[i][j] = 0;
+          for (k = 0; k < N; k++)
+              res[i][j] += mat1[i][k] * mat2[k][j];
+      }
+  }
+}
+
+void add(std::complex<double> mat1[N][N], std::complex<double> mat2[N][N], std::complex<double> res[N][N])
+{
+  for(int i = 0; i < N; i++)
+  {
+    for(int j = 0; j < N; j++)
+      res[i][j] = mat1[i][j] + mat2[i][j];
+  }
+}
 
 void kronecker_prod(std::complex<double> ans[N][N], const std::complex<double> mat[2][2], int a)
 {
@@ -225,54 +246,109 @@ void kronecker_prod(std::complex<double> ans[N][N], const std::complex<double> m
 
 int main()
 {
-  std::cout << "Enter values of J and h" << std::endl;
+  std::cout << "Enter values of J>0 and h>0" << std::endl;
 
   double J, h;
 
   std::cin >> J;
   std::cin >> h;
 
-  // std::complex<double> matrix[n][n] = { { 0.0, -I_ },
-  //                 { I_, 0.0 } };
-  // /* Its eigenvalues are {-2, 1, 1} */
-
-  // auto matmul = [&](const vector<complex<double>>& in, vector<complex<double>>& out) {
-  //     for(size_t i = 0;i < n;i++) {
-  //     for(size_t j = 0;j < n;j++) {
-  //     out[i] += matrix[i][j]*in[j];
-  //     }
-  //     }
-  // };
-
-  // // Driver Code Below
-  // LambdaLanczos<std::complex<double>> engine(matmul, n);
-  // engine.init_vector = vector_initializer<complex<double>>;
-  // double eigvalue;
-  // std::vector<std::complex<double>> eigvec(n);
-  // engine.run(eigvalue, eigvec);
-
-  // std::cout << eigvalue << std::endl;
-  
-  // for(size_t i = 0;i < n; i++) {
-  //     std::cout << eigvec[i] << " ";
-  // }
+  if(J<0 || h<0)
+  {
+    std::cout << "ERROR: Negative Constants" << std::endl;
+    return -1;
+  }
   
   std::complex<double> H[N][N];
 
+  std::complex<double> sum1[N][N];
+
+  for(int i = 0; i < N; i++)
+  {
+    for(int j = 0; j < N; j++)
+        sum1[i][j] = 0;
+  }
+
+  std::complex<double> T[N][N];
+  std::complex<double> T1[N][N];
+  std::complex<double> T2[N][N];
+
+  for(int i=1; i < n; i++)
+  {
+    kronecker_prod(T1, Z, n-i);
+    kronecker_prod(T2, Z, n-i-1);
+    multiply(T1, T2, T);
+    add(sum1, T, sum1);
+  }
+
+  if(n>2)
+  {
+    kronecker_prod(T1, Z, 0);
+    kronecker_prod(T2, Z, n-1);
+    multiply(T1, T2, T);
+    add(sum1, T, sum1); 
+  }
+
+  for(int i = 0; i < N; i++)
+  {
+    for(int j = 0; j < N; j++)
+      sum1[i][j] = -J*sum1[i][j];
+  }
+
+  std::complex<double> sum2[N][N];
+
+  for(int i = 0; i < N; i++)
+  {
+    for(int j = 0; j < N; j++)
+        sum2[i][j] = 0;
+  }
+
+  for(int i = 1; i <= n; i++)
+  {
+    kronecker_prod(T, X, n-i);
+    add(sum2, T, sum2);
+  }
+
+  for(int i = 0; i < N; i++)
+  {
+    for(int j = 0; j < N; j++)
+      sum2[i][j] = h*sum2[i][j];
+  }
+
+  add(sum1, sum2, H);
+
+  for(int i = 0; i < N; i++)
+  {
+    for(int j = 0; j < N; j++)
+    {
+      std::cout << H[i][j] << " ";
+      // if(i==j)
+      //   H[i][j] = 2;
+      // else
+      //   H[i][j] = 0;
+    }
+    std::cout << std::endl;
+  }
+
+  // Driver Code Below
+  auto matmul = [&](const vector<complex<double>>& in, vector<complex<double>>& out) {
+      for(size_t i = 0;i < N;i++) {
+      for(size_t j = 0;j < N;j++) {
+      out[i] += H[i][j]*in[j];
+      }
+      }
+  };
+
+  LambdaLanczos<std::complex<double>> engine(matmul, N);
+  engine.init_vector = vector_initializer<complex<double>>;
+  double eigvalue;
+  std::vector<std::complex<double>> eigvec(N);
+  engine.run(eigvalue, eigvec);
+
+  std::cout << "Eigen Value = " << eigvalue << std::endl;
   
-
-
-  // std::cout << N << std::endl;
-
-  // kronecker_prod(ans, X, 1);
-
-  // for(int i = 0; i < N; i++)
-  // {
-  //   for(int j = 0; j < N; j++)
-  //   {
-  //     std::cout << std::real(ans[i][j]) << " ";
-  //   }
-  //   std::cout << std::endl;
+  // for(size_t i = 0;i < N; i++) {
+  //     std::cout << eigvec[i] << " ";
   // }
 
   return 0;
