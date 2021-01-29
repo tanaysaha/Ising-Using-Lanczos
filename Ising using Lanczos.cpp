@@ -1,9 +1,11 @@
+#include <fstream>
 #include <iostream>
 #include <lambda_lanczos.hpp>
+#include <eigen3/Eigen/Dense>
 
 const auto I_ = std::complex<double>(0.0, 1.0);
 
-const size_t n = 3;
+const size_t n = 4;
 const size_t N = 1<<n;
 
 const std::complex<double> X[2][2] = 
@@ -317,18 +319,32 @@ int main()
 
   add(sum1, sum2, H);
 
-  for(int i = 0; i < N; i++)
+  typedef Eigen::Matrix<std::complex<double>, Eigen::Dynamic, Eigen::Dynamic>  Mat;
+  
+  Mat H_new;
+
+  H_new.resize(N, N);
+
+  for(int i = 0; i<N; i++)
   {
-    for(int j = 0; j < N; j++)
+    for(int j = 0; j<N; j++)
     {
-      std::cout << H[i][j] << " ";
-      // if(i==j)
-      //   H[i][j] = 2;
-      // else
-      //   H[i][j] = 0;
+      H_new(i, j) = H[i][j];
     }
-    std::cout << std::endl;
   }
+
+  Eigen::SelfAdjointEigenSolver<Mat> es(N);
+
+  es.compute(H_new);
+
+  // for(int i = 0; i < N; i++)
+  // {
+  //   for(int j = 0; j < N; j++)
+  //   {
+  //     std::cout << H[i][j] << " ";
+  //   }
+  //   std::cout << std::endl;
+  // }
 
   // Driver Code Below
   auto matmul = [&](const vector<complex<double>>& in, vector<complex<double>>& out) {
@@ -339,17 +355,20 @@ int main()
       }
   };
 
-  LambdaLanczos<std::complex<double>> engine(matmul, N);
+  LambdaLanczos<std::complex<double>> engine(matmul, N, true);
   engine.init_vector = vector_initializer<complex<double>>;
   double eigvalue;
   std::vector<std::complex<double>> eigvec(N);
   engine.run(eigvalue, eigvec);
 
-  std::cout << "Eigen Value = " << eigvalue << std::endl;
-  
-  // for(size_t i = 0;i < N; i++) {
-  //     std::cout << eigvec[i] << " ";
-  // }
+  std::ofstream outfile;
+  outfile.open("Energies.txt");
+
+  outfile << es.eigenvalues();
+
+  std::cout << es.eigenvectors() << std::endl;
+
+  std::cout << "Eigenvalue:" << eigvalue << std::endl;
 
   return 0;
 }
