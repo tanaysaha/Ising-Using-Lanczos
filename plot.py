@@ -5,6 +5,8 @@ f = open("Energies.txt", 'r')
 
 E = list(map(float, f.read().split()))
 
-plt.hist(E, bins=200)
+X = np.linspace(1, len(E), len(E), endpoint=True)
+
+plt.plot(X, E)
 
 plt.show()

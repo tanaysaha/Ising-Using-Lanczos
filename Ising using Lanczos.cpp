@@ -2,6 +2,7 @@
 #include <iostream>
 #include <lambda_lanczos.hpp>
 #include <eigen3/Eigen/Dense>
+#include <cmath>
 
 const auto I_ = std::complex<double>(0.0, 1.0);
 
@@ -347,28 +348,55 @@ int main()
   // }
 
   // Driver Code Below
-  auto matmul = [&](const vector<complex<double>>& in, vector<complex<double>>& out) {
-      for(size_t i = 0;i < N;i++) {
-      for(size_t j = 0;j < N;j++) {
-      out[i] += H[i][j]*in[j];
-      }
-      }
-  };
+  // auto matmul = [&](const vector<complex<double>>& in, vector<complex<double>>& out) {
+  //     for(size_t i = 0;i < N;i++) {
+  //     for(size_t j = 0;j < N;j++) {
+  //     out[i] += H[i][j]*in[j];
+  //     }
+  //     }
+  // };
 
-  LambdaLanczos<std::complex<double>> engine(matmul, N, true);
-  engine.init_vector = vector_initializer<complex<double>>;
-  double eigvalue;
-  std::vector<std::complex<double>> eigvec(N);
-  engine.run(eigvalue, eigvec);
+  // LambdaLanczos<std::complex<double>> engine(matmul, N, true);
+  // engine.init_vector = vector_initializer<complex<double>>;
+  // double eigvalue;
+  // std::vector<std::complex<double>> eigvec(N);
+  // engine.run(eigvalue, eigvec);
 
   std::ofstream outfile;
   outfile.open("Energies.txt");
 
   outfile << es.eigenvalues();
 
-  std::cout << es.eigenvectors() << std::endl;
+  // std::cout << es.eigenvectors() << std::endl;
 
-  std::cout << "Eigenvalue:" << eigvalue << std::endl;
+  std::cout << "Enter values of L1 and L2" << std::endl;
+
+  int L1, L2;
+
+  std::cin >> L1;
+  std::cin >> L2;
+
+  Mat psi = Mat::Zero(1<<L2, 1<<L1);
+
+  for(int i=0; i < N; i++)
+  {
+    int r = i%(1<<L1);
+    int l = i/((int)1<<L2);
+    psi(l, r) = es.eigenvectors()(N/2, i);
+  }
+
+  Eigen::JacobiSVD<Mat> svd(psi, Eigen::ComputeThinU | Eigen::ComputeThinV);
+
+  Eigen::VectorXd S = svd.singularValues();
+
+  double Entropy = 0;
+
+  for(int i=0; i < svd.singularValues().size(); i++)
+  {
+    if(S(i)!=0)
+      Entropy += -2*(S(i))*(log(S(i)))*(S(i));
+  }
+  std::cout << "Entanglement Entropy:" << Entropy << std::endl;
 
   return 0;
 }
