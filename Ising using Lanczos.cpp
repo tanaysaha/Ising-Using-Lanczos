@@ -1,12 +1,11 @@
 #include <fstream>
 #include <iostream>
-#include <lambda_lanczos.hpp>
 #include <eigen3/Eigen/Dense>
 #include <cmath>
 
 const auto I_ = std::complex<double>(0.0, 1.0);
 
-const size_t n = 4;
+const size_t n = 8;
 const size_t N = 1<<n;
 
 const std::complex<double> X[2][2] = 
@@ -20,44 +19,6 @@ const std::complex<double> Y[2][2] =
 const std::complex<double> Z[2][2] = 
                     { { 1, 0 },
                       { 0, -1 } };
-
-// Remember to remove this \/\/\/\/\/\/\/\/\/\/\/
-
-using lambda_lanczos::LambdaLanczos;
-
-template<typename T>
-using vector = std::vector<T>;
-
-template<typename T>
-using complex = std::complex<T>;
-
-
-template <typename T>
-void vector_initializer(vector<T>& v);
-
-template<>
-void vector_initializer(vector<double>& v) {
-  std::mt19937 mt(1);
-  std::uniform_real_distribution<double> rand(-1.0, 1.0);
-
-  size_t n = v.size();
-  for(size_t i = 0;i < n;i++) {
-    v[i] = rand(mt);
-  }
-}
-
-template<>
-void vector_initializer(vector<complex<double>>& v) {
-  std::mt19937 mt(1);
-  std::uniform_real_distribution<double> rand(-1.0, 1.0);
-
-  size_t n = v.size();
-  for(size_t i = 0;i < n;i++) {
-    v[i] = std::complex<double>(rand(mt), rand(mt));
-  }
-}
-
-// Remember to remove this^^^^^^^^^^^^^^^^^^
 
 void multiply(std::complex<double> mat1[N][N], std::complex<double> mat2[N][N], std::complex<double> res[N][N])
 {
@@ -338,6 +299,7 @@ int main()
 
   es.compute(H_new);
 
+  // Shows the Hamiltonian
   // for(int i = 0; i < N; i++)
   // {
   //   for(int j = 0; j < N; j++)
@@ -347,56 +309,78 @@ int main()
   //   std::cout << std::endl;
   // }
 
-  // Driver Code Below
-  // auto matmul = [&](const vector<complex<double>>& in, vector<complex<double>>& out) {
-  //     for(size_t i = 0;i < N;i++) {
-  //     for(size_t j = 0;j < N;j++) {
-  //     out[i] += H[i][j]*in[j];
-  //     }
-  //     }
-  // };
+  std::ofstream outfile1;
+  outfile1.open("Energies.txt");
 
-  // LambdaLanczos<std::complex<double>> engine(matmul, N, true);
-  // engine.init_vector = vector_initializer<complex<double>>;
-  // double eigvalue;
-  // std::vector<std::complex<double>> eigvec(N);
-  // engine.run(eigvalue, eigvec);
+  outfile1 << es.eigenvalues();
 
-  std::ofstream outfile;
-  outfile.open("Energies.txt");
+  // for(int i = 0; i < N; i++)
+  //   std::cout << es.eigenvectors()(0, i);
 
-  outfile << es.eigenvalues();
-
-  // std::cout << es.eigenvectors() << std::endl;
-
-  std::cout << "Enter values of L1 and L2" << std::endl;
+  std::cout << "Enter values of L1, given L = "<< n << std::endl;
 
   int L1, L2;
 
   std::cin >> L1;
-  std::cin >> L2;
+  L2 = n - L1;
 
-  Mat psi = Mat::Zero(1<<L2, 1<<L1);
+  std::ofstream outfile2;
+  outfile2.open("Entropies.txt");
 
-  for(int i=0; i < N; i++)
+  for(int sn = 0; sn < N; sn++)
   {
-    int r = i%(1<<L1);
-    int l = i/((int)1<<L2);
-    psi(l, r) = es.eigenvectors()(N/2, i);
+    L2 = n - L1;
+    Mat psi = Mat::Zero(1<<L2, 1<<L1);
+
+    for(int i=0; i < N; i++)
+    {
+      int r = i%(1<<L1);
+      int l = i/(1<<L2);
+      psi(l, r) = es.eigenvectors()(sn, i); //First Index is the State Number
+    }
+
+    Eigen::JacobiSVD<Mat> svd(psi, Eigen::ComputeThinU | Eigen::ComputeThinV);
+
+    Eigen::VectorXd S = svd.singularValues();
+
+    double Entropy = 0;
+
+    for(int i=0; i < svd.singularValues().size(); i++)
+    {
+      if(S(i)!=0)
+        Entropy += -2*(S(i))*(log(S(i)))*(S(i));
+    }
+    outfile2 << Entropy << std::endl;
   }
 
-  Eigen::JacobiSVD<Mat> svd(psi, Eigen::ComputeThinU | Eigen::ComputeThinV);
+  std::ofstream outfile3;
+  outfile3.open("Entropies_gs.txt");
 
-  Eigen::VectorXd S = svd.singularValues();
-
-  double Entropy = 0;
-
-  for(int i=0; i < svd.singularValues().size(); i++)
+  for(L1 = 0; L1 <= n/2; L1++)
   {
-    if(S(i)!=0)
-      Entropy += -2*(S(i))*(log(S(i)))*(S(i));
+    L2 = n - L1;
+    Mat psi = Mat::Zero(1<<L2, 1<<L1);
+
+    for(int i=0; i < N; i++)
+    {
+      int r = i%(1<<L1);
+      int l = i/(1<<L2);
+      psi(l, r) = es.eigenvectors()(0, i); //First Index is the State Number
+    }
+
+    Eigen::JacobiSVD<Mat> svd(psi, Eigen::ComputeThinU | Eigen::ComputeThinV);
+
+    Eigen::VectorXd S = svd.singularValues();
+
+    double Entropy = 0;
+
+    for(int i=0; i < svd.singularValues().size(); i++)
+    {
+      if(S(i)!=0)
+        Entropy += -2*(S(i))*(log(S(i)))*(S(i));
+    }
+    outfile3 << Entropy << std::endl;
   }
-  std::cout << "Entanglement Entropy:" << Entropy << std::endl;
 
   return 0;
 }
