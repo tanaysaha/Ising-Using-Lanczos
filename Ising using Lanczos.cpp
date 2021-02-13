@@ -1,7 +1,4 @@
-#include <fstream>
-#include <iostream>
 #include <eigen3/Eigen/Dense>
-#include <cmath>
 #include <bits/stdc++.h>
 
 typedef Eigen::Matrix<std::complex<double>, Eigen::Dynamic, Eigen::Dynamic>  Mat;
@@ -23,50 +20,19 @@ const std::complex<double> Z[2][2] =
                     { { 1, 0 },
                       { 0, -1 } };
 
-void multiply(std::complex<double> mat1[N][N], std::complex<double> mat2[N][N], std::complex<double> res[N][N])
-{
-  int i, j, k;
-  for (i = 0; i < N; i++) {
-      for (j = 0; j < N; j++) {
-          res[i][j] = 0;
-          for (k = 0; k < N; k++)
-              res[i][j] += mat1[i][k] * mat2[k][j];
-      }
-  }
-}
-
-void add(std::complex<double> mat1[N][N], std::complex<double> mat2[N][N], std::complex<double> res[N][N])
-{
-  for(int i = 0; i < N; i++)
-  {
-    for(int j = 0; j < N; j++)
-      res[i][j] = mat1[i][j] + mat2[i][j];
-  }
-}
-
-void kronecker_prod(std::complex<double> ans[N][N], const std::complex<double> mat[2][2], int a)
+Mat kronecker_prod(const std::complex<double> mat[2][2], int a)
 {
   int b = n - a - 1;
 
+  Mat ans;
+  ans.resize(N, N);
+
   if(a < 0 || b < 0)
-  {
-    std::cout << "ERROR: Negative exponents" << std::endl;
-    return;
-  }
+    throw "ERROR: Negative exponents";
 
   if(a==0)
   {
-    std::complex<double> B[1<<b][1<<b];
-    for(int i = 0; i < 1<<b; i++)
-    {
-      for(int j = 0; j < 1<<b; j++)
-      {
-        if(i==j)
-          B[i][j] = 1;
-        else
-          B[i][j] = 0;
-      }
-    }
+    Mat B = Mat::Identity(1<<b, 1<<b);
 
     int t1=0, t2=0;
     for (int i = 0; i < 1<<b; i++) { 
@@ -83,7 +49,7 @@ void kronecker_prod(std::complex<double> ans[N][N], const std::complex<double> m
               // Each element of matrix A is 
               // multiplied by whole Matrix B 
               // resp and stored as Matrix C 
-              ans[t1][t2] = B[i][j] * mat[k][l];
+              ans(t1, t2) = B(i, j) * mat[k][l];
               t2++;
           } 
         }
@@ -95,17 +61,7 @@ void kronecker_prod(std::complex<double> ans[N][N], const std::complex<double> m
 
   else if(b==0)
   {
-    std::complex<double> A[1<<a][1<<a];
-    for(int i = 0; i < 1<<a; i++)
-    {
-      for(int j = 0; j < 1<<a; j++)
-      {
-        if(i==j)
-          A[i][j] = 1;
-        else
-          A[i][j] = 0;
-      }
-    }
+    Mat A = Mat::Identity(1<<a, 1<<a);
 
     int t1=0, t2=0;
     for (int i = 0; i < 2; i++) { 
@@ -122,7 +78,7 @@ void kronecker_prod(std::complex<double> ans[N][N], const std::complex<double> m
               // Each element of matrix A is 
               // multiplied by whole Matrix B 
               // resp and stored as Matrix C 
-              ans[t1][t2] = mat[i][j] * A[k][l];
+              ans(t1, t2) = mat[i][j] * A(k, l);
               t2++;
           } 
         }
@@ -133,30 +89,8 @@ void kronecker_prod(std::complex<double> ans[N][N], const std::complex<double> m
   }
   else
   {
-    std::complex<double> A[1<<a][1<<a];
-    std::complex<double> B[1<<b][1<<b];
-
-    for(int i = 0; i < 1<<a; i++)
-    {
-      for(int j = 0; j < 1<<a; j++)
-      {
-        if(i==j)
-          A[i][j] = 1;
-        else
-          A[i][j] = 0;
-      }
-    }
-
-    for(int i = 0; i < 1<<b; i++)
-    {
-      for(int j = 0; j < 1<<b; j++)
-      {
-        if(i==j)
-          B[i][j] = 1;
-        else
-          B[i][j] = 0;
-      }
-    }
+    Mat B = Mat::Identity(1<<b, 1<<b);
+    Mat A = Mat::Identity(1<<a, 1<<a);
 
     std::complex<double> temp[2*1<<a][2*1<<a];
 
@@ -176,7 +110,7 @@ void kronecker_prod(std::complex<double> ans[N][N], const std::complex<double> m
               // Each element of matrix A is 
               // multiplied by whole Matrix B 
               // resp and stored as Matrix C 
-              temp[t1][t2] = mat[i][j] * A[k][l];
+              temp[t1][t2] = mat[i][j] * A(k, l);
               t2++;
           } 
         }
@@ -200,7 +134,7 @@ void kronecker_prod(std::complex<double> ans[N][N], const std::complex<double> m
               // Each element of matrix A is 
               // multiplied by whole Matrix B 
               // resp and stored as Matrix C 
-              ans[t1][t2] = B[i][j] * temp[k][l];
+              ans(t1, t2) = B(i, j) * temp[k][l];
               t2++;
           } 
         }
@@ -209,6 +143,7 @@ void kronecker_prod(std::complex<double> ans[N][N], const std::complex<double> m
       } 
     } 
   }
+  return ans;
 }
 
 int main()
@@ -225,80 +160,45 @@ int main()
     std::cout << "ERROR: Negative Constants" << std::endl;
     return -1;
   }
-  
-  std::complex<double> H[N][N];
 
-  std::complex<double> sum1[N][N];
-
-  for(int i = 0; i < N; i++)
-  {
-    for(int j = 0; j < N; j++)
-        sum1[i][j] = 0;
-  }
-
-  std::complex<double> T[N][N];
-  std::complex<double> T1[N][N];
-  std::complex<double> T2[N][N];
+  Mat T1;
+  Mat T2;
+  Mat T;
+  Mat sum1 = Mat::Zero(N, N);
 
   for(int i=1; i < n; i++)
   {
-    kronecker_prod(T1, Z, n-i);
-    kronecker_prod(T2, Z, n-i-1);
-    multiply(T1, T2, T);
-    add(sum1, T, sum1);
+    T1 = kronecker_prod(Z, n-i);
+    T2 = kronecker_prod(Z, n-i-1);
+    T = T1*T2;
+    sum1 += T;
   }
 
   if(n>2)
   {
-    kronecker_prod(T1, Z, 0);
-    kronecker_prod(T2, Z, n-1);
-    multiply(T1, T2, T);
-    add(sum1, T, sum1); 
+    T1 = kronecker_prod(Z, 0);
+    T2 = kronecker_prod(Z, n-1);
+    T = T1*T2;
+    sum1 += T;
   }
 
-  for(int i = 0; i < N; i++)
-  {
-    for(int j = 0; j < N; j++)
-      sum1[i][j] = -J*sum1[i][j];
-  }
+  sum1 = -J*sum1;
 
-  std::complex<double> sum2[N][N];
-
-  for(int i = 0; i < N; i++)
-  {
-    for(int j = 0; j < N; j++)
-        sum2[i][j] = 0;
-  }
+  Mat sum2 = Mat::Zero(N, N);
 
   for(int i = 1; i <= n; i++)
   {
-    kronecker_prod(T, X, n-i);
-    add(sum2, T, sum2);
+    T = kronecker_prod(X, n-i);
+    sum2 += T;
   }
 
-  for(int i = 0; i < N; i++)
-  {
-    for(int j = 0; j < N; j++)
-      sum2[i][j] = h*sum2[i][j];
-  }
-
-  add(sum1, sum2, H);
+  sum2 = h*sum2;
   
-  Mat H_new;
-
-  H_new.resize(N, N);
-
-  for(int i = 0; i<N; i++)
-  {
-    for(int j = 0; j<N; j++)
-    {
-      H_new(i, j) = H[i][j];
-    }
-  }
+  Mat H = sum1 + sum2;
 
   Eigen::SelfAdjointEigenSolver<Mat> es(N);
 
-  es.compute(H_new);
+  es.compute(H);
 
   // Shows the Hamiltonian
   // for(int i = 0; i < N; i++)
@@ -381,7 +281,7 @@ int main()
         Entropy += -2*(S(i))*(log(S(i)))*(S(i));
     }
     outfile3 << Entropy << std::endl;
-  }
+  } //Ground State Length Calculations
 
   double min = EntropyList[0];
   int min_loc_temp = 0;
@@ -403,34 +303,34 @@ int main()
       min_loc.push_back(i);
   }
 
-  std::cout << min << "locs:" << std::endl;
+  // std::cout << min << "locs:" << std::endl;
 
-  for(int i=0; i<min_loc.size(); i++)
-    std::cout << min_loc.at(i) << std::endl;
+  // for(int i=0; i<min_loc.size(); i++)
+  //   std::cout << min_loc.at(i) << std::endl;
+
+  // std::cout << "Enter time" << std::endl;
+
+  // double t;
+  // std::cin >> t;
 
   Mat Z_t;
   Z_t.resize(N, N);
 
-  Mat T_new;
-  T_new.resize(N, N);
-
-  for(int i = 0; i<N; i++)
-  {
-    for(int j = 0; j<N; j++)
-    {
-      T_new(i, j) = T1[i][j];
-    }
-  }
-
-  Z_t = (Mat::Identity(N, N) + I_*H_new)*T_new*(Mat::Identity(N, N) - I_*H_new);
   Mat state;
   state.resize(N, 1);
   for(int i = 0; i < N; i++)
     state(i) = es.eigenvectors()(0, i);
 
-  auto avg_Z = state.adjoint()*(Z_t*state);
+  std::ofstream outfile4;
+  outfile4.open("Avg_Z.txt");
 
-  std::cout << avg_Z << std::endl;
+  for(double t = 0; t < std::min( 1/(100*J), 1/(100*h)); t += 0.001)
+  {
+    Z_t = (Mat::Identity(N, N) + t*I_*H)*T1*(Mat::Identity(N, N) - t*I_*H); // Time Evolved Operator
+
+    auto avg_Z = state.adjoint()*(Z_t*state);
+    outfile4 << avg_Z.real() << std::endl;
+  }
 
   return 0;
 }
