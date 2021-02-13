@@ -2,6 +2,9 @@
 #include <iostream>
 #include <eigen3/Eigen/Dense>
 #include <cmath>
+#include <bits/stdc++.h>
+
+typedef Eigen::Matrix<std::complex<double>, Eigen::Dynamic, Eigen::Dynamic>  Mat;
 
 const auto I_ = std::complex<double>(0.0, 1.0);
 
@@ -280,8 +283,6 @@ int main()
   }
 
   add(sum1, sum2, H);
-
-  typedef Eigen::Matrix<std::complex<double>, Eigen::Dynamic, Eigen::Dynamic>  Mat;
   
   Mat H_new;
 
@@ -314,9 +315,6 @@ int main()
 
   outfile1 << es.eigenvalues();
 
-  // for(int i = 0; i < N; i++)
-  //   std::cout << es.eigenvectors()(0, i);
-
   std::cout << "Enter values of L1, given L = "<< n << std::endl;
 
   int L1, L2;
@@ -326,6 +324,8 @@ int main()
 
   std::ofstream outfile2;
   outfile2.open("Entropies.txt");
+
+  double EntropyList[N];
 
   for(int sn = 0; sn < N; sn++)
   {
@@ -350,6 +350,7 @@ int main()
       if(S(i)!=0)
         Entropy += -2*(S(i))*(log(S(i)))*(S(i));
     }
+    EntropyList[sn] = Entropy;
     outfile2 << Entropy << std::endl;
   }
 
@@ -368,7 +369,7 @@ int main()
       psi(l, r) = es.eigenvectors()(0, i); //First Index is the State Number
     }
 
-    Eigen::JacobiSVD<Mat> svd(psi, Eigen::ComputeThinU | Eigen::ComputeThinV);
+    Eigen::BDCSVD<Mat> svd(psi, Eigen::ComputeThinU | Eigen::ComputeThinV);
 
     Eigen::VectorXd S = svd.singularValues();
 
@@ -381,6 +382,55 @@ int main()
     }
     outfile3 << Entropy << std::endl;
   }
+
+  double min = EntropyList[0];
+  int min_loc_temp = 0;
+
+  std::vector<int> min_loc;
+
+  for(int i=0; i < N; i++)
+  {
+    if(EntropyList[i] < min)
+    {
+      min = EntropyList[i];
+      min_loc_temp = i;
+    }
+  }
+
+  for(int i=0; i < N; i++)
+  {
+    if(EntropyList[i] > 0.99*min && EntropyList[i] < 1.01*min)
+      min_loc.push_back(i);
+  }
+
+  std::cout << min << "locs:" << std::endl;
+
+  for(int i=0; i<min_loc.size(); i++)
+    std::cout << min_loc.at(i) << std::endl;
+
+  Mat Z_t;
+  Z_t.resize(N, N);
+
+  Mat T_new;
+  T_new.resize(N, N);
+
+  for(int i = 0; i<N; i++)
+  {
+    for(int j = 0; j<N; j++)
+    {
+      T_new(i, j) = T1[i][j];
+    }
+  }
+
+  Z_t = (Mat::Identity(N, N) + I_*H_new)*T_new*(Mat::Identity(N, N) - I_*H_new);
+  Mat state;
+  state.resize(N, 1);
+  for(int i = 0; i < N; i++)
+    state(i) = es.eigenvectors()(0, i);
+
+  auto avg_Z = state.adjoint()*(Z_t*state);
+
+  std::cout << avg_Z << std::endl;
 
   return 0;
 }

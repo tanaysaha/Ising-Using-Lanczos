@@ -7,7 +7,7 @@ f2 = open("Entropies.txt", 'r')
 Energy = list(map(float, f1.read().split()))
 Entropy = list(map(float, f2.read().split()))
 
-multi_factor1 = (max(Energy)/max(Entropy))
+multi_factor = (max(Energy)/max(Entropy))
 
 for i in range(len(Entropy)):
     Entropy[i] = Entropy[i]*multi_factor
