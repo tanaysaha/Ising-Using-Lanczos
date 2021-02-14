@@ -288,22 +288,32 @@ int main()
     outfile3 << Entropy << std::endl;
   } //Ground State Length Calculations
 
-  double min = EntropyList[0];
-  double max =EntropyList[0];
+  // double min = EntropyList[0];
+  // double max = EntropyList[0];
 
   std::vector<int> min_loc;
 
-  for(int i=0; i < 1<<n; i++)
-  {
-    if(EntropyList[i] < min)
-      min = EntropyList[i];
-    if(EntropyList[i] > max)
-      max = EntropyList[i];
-  }
+  double List_avg = 0;
+  double List_sq_avg = 0;
 
   for(int i=0; i < 1<<n; i++)
   {
-    if(EntropyList[i] < min + 0.1*(max - min)) //Scar Filter
+    // if(EntropyList[i] < min)
+    //   min = EntropyList[i];
+    // if(EntropyList[i] > max)
+    //   max = EntropyList[i];
+    List_avg += EntropyList[i];
+    List_sq_avg += EntropyList[i]*EntropyList[i];
+  }
+
+  List_avg = List_avg/(1<<n);
+  List_sq_avg = List_sq_avg/(1<<n);
+
+  double List_std_dev = std::sqrt(List_sq_avg - List_avg*List_avg);
+
+  for(int i=0; i < 1<<n; i++)
+  {
+    if(EntropyList[i] < List_avg - 2*List_std_dev) //Scar Filter
       min_loc.push_back(i);
   }
 
@@ -332,6 +342,8 @@ int main()
   if(std::abs((state.dot(state)).real() - 1) > 0.0001)
     throw "State not normalized";
 
+  T1 = kronecker_prod(Z, n-3, n);
+
   std::ofstream outfile4;
   outfile4.open("Avg_Z.txt");
 
@@ -340,7 +352,9 @@ int main()
     Mat U = (t*I_*H).exp(); //Careful with unsupported function
     Z_t = U*T1*U.adjoint(); // Time Evolved Operator
 
-    auto avg_Z = state.adjoint()*(Z_t*state);
+    auto avg_Z = state.dot(Z_t*state);
+    if(avg_Z.imag() > 0.00001)
+      throw "Avg_Z imaginary";
     outfile4 << avg_Z.real() << std::endl;
   }
 
