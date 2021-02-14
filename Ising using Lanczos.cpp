@@ -1,12 +1,10 @@
 #include <eigen3/Eigen/Dense>
+#include <eigen3/unsupported/Eigen/MatrixFunctions>
 #include <bits/stdc++.h>
 
 typedef Eigen::Matrix<std::complex<double>, Eigen::Dynamic, Eigen::Dynamic>  Mat;
 
 const auto I_ = std::complex<double>(0.0, 1.0);
-
-const size_t n = 8;
-const size_t N = 1<<n;
 
 const std::complex<double> X[2][2] = 
                     { { 0.0, 1 },
@@ -20,12 +18,12 @@ const std::complex<double> Z[2][2] =
                     { { 1, 0 },
                       { 0, -1 } };
 
-Mat kronecker_prod(const std::complex<double> mat[2][2], int a)
+Mat kronecker_prod(const std::complex<double> mat[2][2], int a, int n)
 {
   int b = n - a - 1;
 
   Mat ans;
-  ans.resize(N, N);
+  ans.resize(1<<n, 1<<n);
 
   if(a < 0 || b < 0)
     throw "ERROR: Negative exponents";
@@ -148,14 +146,21 @@ Mat kronecker_prod(const std::complex<double> mat[2][2], int a)
 
 int main()
 {
-  std::cout << "Enter values of J>0 and h>0" << std::endl;
+  std::cout << "Enter value of n, the lattice site number" << std::endl;
 
-  double J, h;
+  int n;
+
+  std::cin >> n;
+
+  std::cout << "Enter values of J>0 and h1, h2>0" << std::endl;
+
+  double J, h1, h2;
 
   std::cin >> J;
-  std::cin >> h;
+  std::cin >> h1;
+  std::cin >> h2;
 
-  if(J<0 || h<0)
+  if(J<0 || h1<0 || h2<0)
   {
     std::cout << "ERROR: Negative Constants" << std::endl;
     return -1;
@@ -164,56 +169,56 @@ int main()
   Mat T1;
   Mat T2;
   Mat T;
-  Mat sum1 = Mat::Zero(N, N);
+  Mat sum1 = Mat::Zero(1<<n, 1<<n);
 
   for(int i=1; i < n; i++)
   {
-    T1 = kronecker_prod(Z, n-i);
-    T2 = kronecker_prod(Z, n-i-1);
+    T1 = kronecker_prod(Z, n-i, n);
+    T2 = kronecker_prod(Z, n-i-1, n);
     T = T1*T2;
     sum1 += T;
   }
 
   if(n>2)
   {
-    T1 = kronecker_prod(Z, 0);
-    T2 = kronecker_prod(Z, n-1);
+    T1 = kronecker_prod(Z, 0, n);
+    T2 = kronecker_prod(Z, n-1, n);
     T = T1*T2;
     sum1 += T;
   }
 
   sum1 = -J*sum1;
 
-  Mat sum2 = Mat::Zero(N, N);
+  Mat sum2 = Mat::Zero(1<<n, 1<<n);
 
   for(int i = 1; i <= n; i++)
   {
-    T = kronecker_prod(X, n-i);
+    T = kronecker_prod(X, n-i, n);
     sum2 += T;
   }
 
-  sum2 = h*sum2;
+  sum2 = h1*sum2;
   
-  Mat H = sum1 + sum2;
+  Mat sum3 = Mat::Zero(1<<n, 1<<n);
 
-  Eigen::SelfAdjointEigenSolver<Mat> es(N);
+  for(int i = 1; i<= n; i++)
+  {
+    T = kronecker_prod(Z, n-i, n);
+    sum3 += T;
+  }
+
+  sum3 = h2*sum3;
+
+  Mat H = sum1 + sum2 + sum3;
+
+  Eigen::SelfAdjointEigenSolver<Mat> es(1<<n);
 
   es.compute(H);
-
-  // Shows the Hamiltonian
-  // for(int i = 0; i < N; i++)
-  // {
-  //   for(int j = 0; j < N; j++)
-  //   {
-  //     std::cout << H[i][j] << " ";
-  //   }
-  //   std::cout << std::endl;
-  // }
 
   std::ofstream outfile1;
   outfile1.open("Energies.txt");
 
-  outfile1 << es.eigenvalues();
+  outfile1 << es.eigenvalues() << std::endl;
 
   std::cout << "Enter values of L1, given L = "<< n << std::endl;
 
@@ -225,21 +230,21 @@ int main()
   std::ofstream outfile2;
   outfile2.open("Entropies.txt");
 
-  double EntropyList[N];
+  double EntropyList[1<<n];
 
-  for(int sn = 0; sn < N; sn++)
+  for(int sn = 0; sn < 1<<n; sn++)
   {
     L2 = n - L1;
     Mat psi = Mat::Zero(1<<L2, 1<<L1);
 
-    for(int i=0; i < N; i++)
+    for(int i=0; i < 1<<n; i++)
     {
       int r = i%(1<<L1);
       int l = i/(1<<L2);
       psi(l, r) = es.eigenvectors()(sn, i); //First Index is the State Number
     }
 
-    Eigen::JacobiSVD<Mat> svd(psi, Eigen::ComputeThinU | Eigen::ComputeThinV);
+    Eigen::BDCSVD<Mat> svd(psi);
 
     Eigen::VectorXd S = svd.singularValues();
 
@@ -262,14 +267,14 @@ int main()
     L2 = n - L1;
     Mat psi = Mat::Zero(1<<L2, 1<<L1);
 
-    for(int i=0; i < N; i++)
+    for(int i=0; i < 1<<n; i++)
     {
       int r = i%(1<<L1);
       int l = i/(1<<L2);
       psi(l, r) = es.eigenvectors()(0, i); //First Index is the State Number
     }
 
-    Eigen::BDCSVD<Mat> svd(psi, Eigen::ComputeThinU | Eigen::ComputeThinV);
+    Eigen::BDCSVD<Mat> svd(psi);
 
     Eigen::VectorXd S = svd.singularValues();
 
@@ -284,49 +289,56 @@ int main()
   } //Ground State Length Calculations
 
   double min = EntropyList[0];
-  int min_loc_temp = 0;
+  double max =EntropyList[0];
 
   std::vector<int> min_loc;
 
-  for(int i=0; i < N; i++)
+  for(int i=0; i < 1<<n; i++)
   {
     if(EntropyList[i] < min)
-    {
       min = EntropyList[i];
-      min_loc_temp = i;
-    }
+    if(EntropyList[i] > max)
+      max = EntropyList[i];
   }
 
-  for(int i=0; i < N; i++)
+  for(int i=0; i < 1<<n; i++)
   {
-    if(EntropyList[i] > 0.99*min && EntropyList[i] < 1.01*min)
+    if(EntropyList[i] < min + 0.1*(max - min)) //Scar Filter
       min_loc.push_back(i);
   }
 
-  // std::cout << min << "locs:" << std::endl;
-
-  // for(int i=0; i<min_loc.size(); i++)
-  //   std::cout << min_loc.at(i) << std::endl;
-
-  // std::cout << "Enter time" << std::endl;
-
-  // double t;
-  // std::cin >> t;
+  std::cout << "No. of Scars:" << min_loc.size() << std::endl;
 
   Mat Z_t;
-  Z_t.resize(N, N);
+  Z_t.resize(1<<n, 1<<n);
 
-  Mat state;
-  state.resize(N, 1);
-  for(int i = 0; i < N; i++)
-    state(i) = es.eigenvectors()(0, i);
+  Eigen::Matrix<std::complex<double>, Eigen::Dynamic, 1> state = Mat::Zero(1<<n, 1);
+
+  for(int i = 0; i < 1<<n; i++)
+  {
+    for(int scar_n = 0; scar_n < min_loc.size(); scar_n++)
+    {
+      state(i) += std::exp(std::complex<double>(scar_n, 0)*I_)*es.eigenvectors()(min_loc.at(scar_n), i); //sum of Scar States
+    }
+  }
+
+  auto normalization = state.dot(state);
+
+  if(normalization.imag() > 0.00001)
+    throw "normalization imaginary";
+
+  state = (1/std::sqrt(normalization.real()))*state;
+
+  if(std::abs((state.dot(state)).real() - 1) > 0.0001)
+    throw "State not normalized";
 
   std::ofstream outfile4;
   outfile4.open("Avg_Z.txt");
 
-  for(double t = 0; t < std::min( 1/(100*J), 1/(100*h)); t += 0.001)
+  for(double t = 0; t < 20*std::min( 1/(100*J), std::min(1/(100*h1), 1/(100*h2))); t += 0.001)
   {
-    Z_t = (Mat::Identity(N, N) + t*I_*H)*T1*(Mat::Identity(N, N) - t*I_*H); // Time Evolved Operator
+    Mat U = (t*I_*H).exp(); //Careful with unsupported function
+    Z_t = U*T1*U.adjoint(); // Time Evolved Operator
 
     auto avg_Z = state.adjoint()*(Z_t*state);
     outfile4 << avg_Z.real() << std::endl;
