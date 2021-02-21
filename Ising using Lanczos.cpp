@@ -342,20 +342,36 @@ int main()
   if(std::abs((state.dot(state)).real() - 1) > 0.0001)
     throw "State not normalized";
 
-  T1 = kronecker_prod(Z, n-3, n);
+  std::cout << "Enter indices of Z(t) and Z(0)" << std::endl;
+  int indext, index0;
+  std::cin >> indext;
+  std::cin >> index0;
 
-  std::ofstream outfile4;
+  T1 = kronecker_prod(Z, n-indext, n); //Z_t(0)
+  T2 = kronecker_prod(Z, n-index0, n); //Z_0(0)
+
+  std::ofstream outfile4, outfile5;
   outfile4.open("Avg_Z.txt");
+  outfile5.open("Avg_Z0.txt");
 
-  for(double t = 0; t < 20*std::min( 1/(100*J), std::min(1/(100*h1), 1/(100*h2))); t += 0.001)
+  int itr = 0;
+
+  for(double t = 0; itr < 100; t += 0.001)
   {
     Mat U = (t*I_*H).exp(); //Careful with unsupported function
     Z_t = U*T1*U.adjoint(); // Time Evolved Operator
 
     auto avg_Z = state.dot(Z_t*state);
+    auto avg_Z0 = state.dot(Z_t*T2*state);
     if(avg_Z.imag() > 0.00001)
       throw "Avg_Z imaginary";
+
+    if(avg_Z0.imag() > 0.00001)
+      throw "Avg_Z imaginary";
+
     outfile4 << avg_Z.real() << std::endl;
+    outfile5 << avg_Z0.real() << std::endl;
+    itr++;
   }
 
   return 0;
