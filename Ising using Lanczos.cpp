@@ -146,6 +146,9 @@ Mat kronecker_prod(const std::complex<double> mat[2][2], int a, int n)
 
 int main()
 {
+  std::ofstream outfile0;
+  outfile0.open("params.txt");
+
   std::cout << "Enter value of n, the lattice site number" << std::endl;
 
   int n;
@@ -226,6 +229,12 @@ int main()
 
   std::cin >> L1;
   L2 = n - L1;
+
+  outfile0 << "n = " << n << std::endl;
+  outfile0 << "J = " << J << std::endl;
+  outfile0 << "h1 = " << h1 << std::endl;
+  outfile0 << "h2 = " << h2 << std::endl;
+  outfile0 << "L1 = " << L1 << std::endl;
 
   std::ofstream outfile2;
   outfile2.open("Entropies.txt");
@@ -346,6 +355,9 @@ int main()
   int indext, index0;
   std::cin >> indext;
   std::cin >> index0;
+
+  outfile0 << "indext = " << indext << std::endl;
+  outfile0 << "index0 = " << index0 << std::endl;
 
   T1 = kronecker_prod(Z, n-indext, n); //Z_t(0)
   T2 = kronecker_prod(Z, n-index0, n); //Z_0(0)
